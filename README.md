@@ -6,6 +6,7 @@ simple wav player for 48000 Hz 16 bit stereo LPCM format
 
 1. clang-20
 2. make
+3. pulseaudio
 
 # build
 
