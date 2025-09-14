@@ -61,11 +61,14 @@ void Send(TContextPtr ctx, EMode mode) noexcept {
         ulock.unlock();
         ctx->readCv.notify_one();
 
-        if (auto now = std::chrono::steady_clock::now(); now - data.first > std::chrono::milliseconds(DELAY_MS) / 100) {
-            continue;
-        }
+        auto delta = std::chrono::microseconds(100);
+        auto now = std::chrono::steady_clock::now();
 
-        std::this_thread::sleep_until(data.first);
+        if (now - data.first > delta) {
+            continue;
+        } else if (data.first - now > delta) {
+            std::this_thread::sleep_until(data.first);
+        }
 
         if (auto ec = send->Send(std::move(data.second)); ec) {
             std::cerr << "send error: " << ec.message() << std::endl;
