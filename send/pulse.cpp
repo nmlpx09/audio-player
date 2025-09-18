@@ -30,8 +30,8 @@ TPulse::~TPulse() {
 
 std::error_code TPulse::Init() noexcept {
     pa_sample_format_t format;
-    if (BitsPerSample == 16) {
-        format = PA_SAMPLE_S16LE;
+    if (BitsPerSample == 24) {
+        format = PA_SAMPLE_S24LE;
     } else {
         return EErrorCode::Format;
     }

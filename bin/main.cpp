@@ -2,7 +2,6 @@
 
 #include <read/wav.h>
 #include <send/pulse.h>
-#include <send/socket.h>
 
 #include <algorithm>
 #include <chrono>
@@ -25,7 +24,6 @@ struct TContext {
 };
 
 enum class EMode {
-    Rtp,
     Pulse
 };
 
@@ -34,9 +32,7 @@ using TContextPtr = std::shared_ptr<TContext>;
 void Send(TContextPtr ctx, EMode mode) noexcept {
     NSend::TSendPtr send;
 
-    if (mode == EMode::Rtp) {
-        send = std::make_unique<NSend::TSocket>(IP, PORT);
-    } else if (mode == EMode::Pulse) {
+    if (mode == EMode::Pulse) {
         send = std::make_unique<NSend::TPulse>(BITS_PER_SAMPLE, CHANNELS, RATE);
     } else {
         return;
@@ -118,12 +114,10 @@ int main(int argc, char *argv[]) {
 
     EMode mode;
 
-    if (auto argMode = std::string{argv[1]}; argMode == "rtp") {
-        mode = EMode::Rtp;
-    } else if (argMode == "pulse") {
+    if (auto argMode = std::string{argv[1]}; argMode == "pulse") {
         mode = EMode::Pulse;
     } else {
-        std::cerr << "unknown mode: only pulse or rtp" << std::endl;
+        std::cerr << "unknown mode: only pulse" << std::endl;
         return 1;
     }
 
