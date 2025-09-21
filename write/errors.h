@@ -2,7 +2,7 @@
 
 #include <system_error>
 
-namespace NSend {
+namespace NWrite {
 
 enum EErrorCode {
     Ok,
@@ -13,16 +13,16 @@ enum EErrorCode {
 
 namespace std {
 
-template<> struct is_error_code_enum<NSend::EErrorCode> : std::true_type{};
+template<> struct is_error_code_enum<NWrite::EErrorCode> : std::true_type{};
 
 }
 
-namespace NSend {
+namespace NWrite {
 
 class TErrorCategory final : public std::error_category {
 public:
     const char* name() const noexcept override {
-        return "send error";
+        return "write error";
     }
 
     std::string message(int value) const override {

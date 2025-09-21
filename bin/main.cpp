@@ -1,11 +1,12 @@
 #include "config.h"
 
-#ifdef ALSA
-#include <send/alsa.h>
-#else
-#include <send/pulse.h>
-#endif
 #include <read/wav.h>
+
+#ifdef ALSA
+#include <write/alsa.h>
+#else
+#include <write/pulse.h>
+#endif
 
 #include <algorithm>
 #include <chrono>
@@ -21,7 +22,7 @@
 struct TContext {
     std::deque<std::pair<std::chrono::time_point<std::chrono::steady_clock>, std::vector<std::uint8_t>>> queue;
     std::mutex mutex;
-    std::condition_variable sendCv;
+    std::condition_variable writeCv;
     std::condition_variable readCv;
 
     bool end = false;
@@ -29,17 +30,17 @@ struct TContext {
 
 using TContextPtr = std::shared_ptr<TContext>;
 
-void Send(TContextPtr ctx) noexcept {
-    NSend::TSendPtr send = std::make_unique<NSend::TSend>(BITS_PER_SAMPLE, CHANNELS, RATE, DEVICE);
+void Write(TContextPtr ctx) noexcept {
+    NWrite::TWritePtr write = std::make_unique<NWrite::TWrite>(BITS_PER_SAMPLE, CHANNELS, RATE, DEVICE);
 
-    if (auto ec = send->Init(); ec) {
-        std::cerr << "send init error: " << ec.message() << std::endl;
+    if (auto ec = write->Init(); ec) {
+        std::cerr << "write init error: " << ec.message() << std::endl;
         return;
     }
 
     while (true) {
         std::unique_lock<std::mutex> ulock{ctx->mutex};
-        ctx->sendCv.wait(ulock, [ctx] { return !ctx->queue.empty() || ctx->end; });
+        ctx->writeCv.wait(ulock, [ctx] { return !ctx->queue.empty() || ctx->end; });
 
         if (ctx->end) {
             return;
@@ -60,7 +61,7 @@ void Send(TContextPtr ctx) noexcept {
             std::this_thread::sleep_until(data.first);
         }
 
-        send->Send(std::move(data.second));
+        write->Write(std::move(data.second));
     }
 }
 
@@ -90,12 +91,12 @@ void Read(TContextPtr ctx, std::vector<std::filesystem::path> files) noexcept {
             }
 
             ulock.unlock();
-            ctx->sendCv.notify_one();
+            ctx->writeCv.notify_one();
         }
     }
 
     ctx->end = true;
-    ctx->sendCv.notify_one();
+    ctx->writeCv.notify_one();
 } 
 
 int main(int argc, char *argv[]) {
@@ -123,11 +124,11 @@ int main(int argc, char *argv[]) {
 
     auto ctx = std::make_shared<TContext>();
     
-    std::thread tSend(Send, ctx);
+    std::thread tWrite(Write, ctx);
     std::thread tRead(Read, ctx, std::move(files));
 
     tRead.join();
-    tSend.join();
+    tWrite.join();
 
     return 0;
 }

@@ -1,9 +1,9 @@
 #include "alsa.h"
 #include "errors.h"
 
-namespace NSend {
+namespace NWrite {
 
-TSend::TSend(
+TWrite::TWrite(
     std::uint16_t bitsPerSample,
     std::uint8_t channels,
     std::uint32_t rate,
@@ -15,7 +15,7 @@ TSend::TSend(
 , Device(std::move(device)){
 }
 
-TSend::TSend(TSend&& alsa) noexcept {
+TWrite::TWrite(TWrite&& alsa) noexcept {
     std::swap(BitsPerSample, alsa.BitsPerSample);
     std::swap(Channels, alsa.Channels);
     std::swap(Rate, alsa.Rate);
@@ -25,14 +25,14 @@ TSend::TSend(TSend&& alsa) noexcept {
     std::swap(FrameSize, alsa.FrameSize);
 }
 
-TSend::~TSend() {
+TWrite::~TWrite() {
     if (SoundDevice != nullptr) {
         snd_pcm_drain(SoundDevice);
         snd_pcm_close(SoundDevice);
     }
 }
 
-std::error_code TSend::Init() noexcept {
+std::error_code TWrite::Init() noexcept {
     if (auto err = snd_pcm_open(&SoundDevice, Device.c_str(), SND_PCM_STREAM_PLAYBACK, 0); err < 0) {
         return make_error_code(EErrorCode::DeviceInit);
     }
@@ -95,7 +95,7 @@ std::error_code TSend::Init() noexcept {
     return {};
 }
 
-std::error_code TSend::Send(TData&& data) noexcept {
+std::error_code TWrite::Write(TData&& data) noexcept {
     if (SoundDevice == nullptr) {
         return make_error_code(EErrorCode::DeviceInit);
     }

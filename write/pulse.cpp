@@ -1,9 +1,9 @@
 #include "pulse.h"
 #include "errors.h"
 
-namespace NSend {
+namespace NWrite {
 
-TSend::TSend(
+TWrite::TWrite(
     std::uint16_t bitsPerSample,
     std::uint8_t channels,
     std::uint32_t rate,
@@ -14,7 +14,7 @@ TSend::TSend(
 , Rate(rate) {
 }
 
-TSend::TSend(TSend&& pulse) noexcept {
+TWrite::TWrite(TWrite&& pulse) noexcept {
     std::swap(BitsPerSample, pulse.BitsPerSample);
     std::swap(Channels, pulse.Channels);
     std::swap(Rate, pulse.Rate);
@@ -23,14 +23,14 @@ TSend::TSend(TSend&& pulse) noexcept {
     std::swap(BufferAttr, pulse.BufferAttr);
 }
 
-TSend::~TSend() {
+TWrite::~TWrite() {
     if (Simple != nullptr) {
         pa_simple_drain(Simple, nullptr);
         pa_simple_free(Simple);
     }
 }
 
-std::error_code TSend::Init() noexcept {
+std::error_code TWrite::Init() noexcept {
     pa_sample_format_t format;
     if (BitsPerSample == 24) {
         format = PA_SAMPLE_S24LE;
@@ -67,7 +67,7 @@ std::error_code TSend::Init() noexcept {
     return {};
 }
 
-std::error_code TSend::Send(TData&& data) noexcept {
+std::error_code TWrite::Write(TData&& data) noexcept {
     if (Simple == nullptr) {
         return make_error_code(EErrorCode::DeviceInit);
     }

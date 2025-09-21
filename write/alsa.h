@@ -9,24 +9,24 @@
 #include <cstdint>
 #include <string>
 
-namespace NSend {
+namespace NWrite {
 
-struct TSend: TInterface {
+struct TWrite: TInterface {
 public:
-    TSend(
+    TWrite(
         std::uint16_t bitsPerSample,
         std::uint8_t channels,
         std::uint32_t rate,
         std::string device
     );
-    TSend(const TSend&) = delete;
-    TSend(TSend&&) noexcept;
-    ~TSend();
-    TSend& operator=(const TSend&) = delete;
-    TSend& operator=(TSend&&) = delete;
+    TWrite(const TWrite&) = delete;
+    TWrite(TWrite&&) noexcept;
+    ~TWrite();
+    TWrite& operator=(const TWrite&) = delete;
+    TWrite& operator=(TWrite&&) = delete;
 
     std::error_code Init() noexcept override;
-    std::error_code Send(TData&& data) noexcept override;
+    std::error_code Write(TData&& data) noexcept override;
 
 private:
     std::uint16_t BitsPerSample = 0;

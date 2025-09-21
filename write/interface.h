@@ -5,15 +5,15 @@
 #include <memory>
 #include <system_error>
 
-namespace NSend {
+namespace NWrite {
 
 struct TInterface {
 public:
     virtual std::error_code Init() noexcept = 0;
-    virtual std::error_code Send(TData&& data) noexcept = 0;
+    virtual std::error_code Write(TData&& data) noexcept = 0;
     virtual ~TInterface() {};
 };
 
-using TSendPtr = std::unique_ptr<TInterface>;
+using TWritePtr = std::unique_ptr<TInterface>;
 
 }
