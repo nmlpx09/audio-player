@@ -3,17 +3,18 @@
 
 namespace NSend {
 
-TPulse::TPulse(
+TSend::TSend(
     std::uint16_t bitsPerSample,
     std::uint8_t channels,
-    std::uint32_t rate
+    std::uint32_t rate,
+    std::string
 )
 : BitsPerSample(std::move(bitsPerSample))
 , Channels(channels)
 , Rate(rate) {
 }
 
-TPulse::TPulse(TPulse&& pulse) noexcept {
+TSend::TSend(TSend&& pulse) noexcept {
     std::swap(BitsPerSample, pulse.BitsPerSample);
     std::swap(Channels, pulse.Channels);
     std::swap(Rate, pulse.Rate);
@@ -21,27 +22,27 @@ TPulse::TPulse(TPulse&& pulse) noexcept {
     std::swap(Spec, pulse.Spec);
 }
 
-TPulse::~TPulse() {
+TSend::~TSend() {
     if (Simple) {
         pa_simple_drain(Simple, nullptr);
         pa_simple_free(Simple);
     }
 }
 
-std::error_code TPulse::Init() noexcept {
+std::error_code TSend::Init() noexcept {
     pa_sample_format_t format;
     if (BitsPerSample == 24) {
         format = PA_SAMPLE_S24LE;
     } else {
-        return EErrorCode::Format;
+        return EErrorCode::DeviceInit;
     }
 
     if (Rate != 48000) {
-        return EErrorCode::Rate;
+        return EErrorCode::DeviceInit;
     }
 
     if (Channels != 2) {
-        return EErrorCode::Channels;
+        return EErrorCode::DeviceInit;
     }
 
     Spec = {
@@ -59,20 +60,18 @@ std::error_code TPulse::Init() noexcept {
     };
 
     if (Simple = pa_simple_new(nullptr, "play", PA_STREAM_PLAYBACK, nullptr, "playback", &Spec, nullptr, &BufferAttr, nullptr); !Simple) {
-        return EErrorCode::Prepare;
+        return EErrorCode::DeviceInit;
     }
 
     return {};
 }
 
-std::error_code TPulse::Send(TData&& data) noexcept {
+std::error_code TSend::Send(TData&& data) noexcept {
     if (Simple == nullptr) {
         return make_error_code(EErrorCode::DeviceInit);
     }
 
-    if (pa_simple_write(Simple, data.data(), data.size(), nullptr) < 0) {
-        return EErrorCode::Write;
-    }
+    pa_simple_write(Simple, data.data(), data.size(), nullptr);
 
     return {};
 }

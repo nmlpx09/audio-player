@@ -1,7 +1,11 @@
 #include "config.h"
 
-#include <read/wav.h>
+#ifdef ALSA
+#include <send/alsa.h>
+#else
 #include <send/pulse.h>
+#endif
+#include <read/wav.h>
 
 #include <algorithm>
 #include <chrono>
@@ -23,20 +27,10 @@ struct TContext {
     bool end = false;
 };
 
-enum class EMode {
-    Pulse
-};
-
 using TContextPtr = std::shared_ptr<TContext>;
 
-void Send(TContextPtr ctx, EMode mode) noexcept {
-    NSend::TSendPtr send;
-
-    if (mode == EMode::Pulse) {
-        send = std::make_unique<NSend::TPulse>(BITS_PER_SAMPLE, CHANNELS, RATE);
-    } else {
-        return;
-    }
+void Send(TContextPtr ctx) noexcept {
+    NSend::TSendPtr send = std::make_unique<NSend::TSend>(BITS_PER_SAMPLE, CHANNELS, RATE, DEVICE);
 
     if (auto ec = send->Init(); ec) {
         std::cerr << "send init error: " << ec.message() << std::endl;
@@ -66,9 +60,7 @@ void Send(TContextPtr ctx, EMode mode) noexcept {
             std::this_thread::sleep_until(data.first);
         }
 
-        if (auto ec = send->Send(std::move(data.second)); ec) {
-            std::cerr << "send error: " << ec.message() << std::endl;
-        }
+        send->Send(std::move(data.second));
     }
 }
 
@@ -107,21 +99,12 @@ void Read(TContextPtr ctx, std::vector<std::filesystem::path> files) noexcept {
 } 
 
 int main(int argc, char *argv[]) {
-    if (argc < 3) {
-        std::cerr << "run: play mode dir" << std::endl;
+    if (argc < 2) {
+        std::cerr << "run: play dir" << std::endl;
         return 1;
     }
 
-    EMode mode;
-
-    if (auto argMode = std::string{argv[1]}; argMode == "pulse") {
-        mode = EMode::Pulse;
-    } else {
-        std::cerr << "unknown mode: only pulse" << std::endl;
-        return 1;
-    }
-
-    std::filesystem::path path = std::string{argv[2]};
+    std::filesystem::path path = std::string{argv[1]};
     std::vector<std::filesystem::path> files;
 
     if (std::filesystem::is_directory(path)) {
@@ -140,7 +123,7 @@ int main(int argc, char *argv[]) {
 
     auto ctx = std::make_shared<TContext>();
     
-    std::thread tSend(Send, ctx, std::move(mode));
+    std::thread tSend(Send, ctx);
     std::thread tRead(Read, ctx, std::move(files));
 
     tRead.join();

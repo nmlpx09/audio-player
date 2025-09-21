@@ -2,7 +2,7 @@
 
 #include "interface.h"
 
-#include <pulse/simple.h>
+#include <alsa/asoundlib.h>
 
 #include <common/types.h>
 
@@ -32,10 +32,11 @@ private:
     std::uint16_t BitsPerSample = 0;
     std::uint8_t Channels = 0;
     std::uint32_t Rate = 0;
-    
-    pa_simple* Simple = nullptr;
-    pa_sample_spec Spec;
-    pa_buffer_attr BufferAttr;
+    std::string Device;
+
+    snd_pcm_t* SoundDevice = nullptr;
+    snd_pcm_hw_params_t* HwParams = nullptr;
+    std::size_t FrameSize = 1;
 };
 
 }

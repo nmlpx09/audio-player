@@ -6,14 +6,7 @@ namespace NSend {
 
 enum EErrorCode {
     Ok,
-    SocketOpen,
-    SocketInit,
-    DeviceInit,
-    Channels,
-    Format,
-    Rate,
-    Prepare,
-    Write
+    DeviceInit
 };
 
 }
@@ -36,22 +29,8 @@ public:
         switch (value) {
             case Ok:
                 return "ok";
-            case SocketOpen:
-                return "socket open error";
-            case SocketInit:
-                return "socket init error";
             case DeviceInit:
                 return "device init error";
-            case Channels:
-                return "channels not supported error";
-            case Format:
-                return "format not supported error";
-            case Rate:
-                return "rate not supported error";
-            case Prepare:
-                return "prepare device error";
-            case Write:
-                return "write device error";
         }
 
         return "unknown error code: " + std::to_string(value);
