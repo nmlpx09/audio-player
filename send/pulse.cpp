@@ -20,10 +20,11 @@ TSend::TSend(TSend&& pulse) noexcept {
     std::swap(Rate, pulse.Rate);
     std::swap(Simple, pulse.Simple);
     std::swap(Spec, pulse.Spec);
+    std::swap(BufferAttr, pulse.BufferAttr);
 }
 
 TSend::~TSend() {
-    if (Simple) {
+    if (Simple != nullptr) {
         pa_simple_drain(Simple, nullptr);
         pa_simple_free(Simple);
     }

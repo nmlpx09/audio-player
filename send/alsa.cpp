@@ -26,8 +26,10 @@ TSend::TSend(TSend&& alsa) noexcept {
 }
 
 TSend::~TSend() {
-    snd_pcm_drain(SoundDevice);
-    snd_pcm_close(SoundDevice);
+    if (SoundDevice != nullptr) {
+        snd_pcm_drain(SoundDevice);
+        snd_pcm_close(SoundDevice);
+    }
 }
 
 std::error_code TSend::Init() noexcept {
