@@ -1,6 +1,6 @@
 # about
 
-simple wav player for 48000 Hz 16 bit stereo LPCM format
+simple wav player for 48000 Hz 24 bit stereo LPCM format
 
 # requirement
 
