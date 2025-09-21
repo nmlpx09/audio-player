@@ -11,7 +11,11 @@ simple wav player for 48000 Hz 24 bit stereo LPCM format
 
 # build
 
-make
+make pulse
+
+or
+
+make alsa
 
 # install
 
