@@ -1,5 +1,3 @@
-#include "config.h"
-
 #include <read/flac.h>
 #include <read/wav.h>
 
@@ -30,10 +28,13 @@ struct TContext {
     bool end = false;
 };
 
+static const std::size_t DELAY_MS = 10;
+static const std::size_t MAX_SIZE_QUEUE = 100;
+
 using TContextPtr = std::shared_ptr<TContext>;
 
-void Write(TContextPtr ctx) noexcept {
-    NWrite::TWritePtr write = std::make_unique<NWrite::TWrite>(DEVICE);
+void Write(TContextPtr ctx, std::string device) noexcept {
+    NWrite::TWritePtr write = std::make_unique<NWrite::TWrite>(device);
 
     auto popQueue = [ctx]() -> std::optional<std::pair<TSampleFormat, TData>> {
         std::unique_lock<std::mutex> ulock{ctx->mutex};
@@ -128,11 +129,18 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    std::string device;
+    if (argc == 3) {
+        device = std::string{argv[2]};
+    } else {
+        device = "pulse";
+    }
+
     std::sort(files.begin(), files.end());
 
     auto ctx = std::make_shared<TContext>();
     
-    std::thread tWrite(Write, ctx);
+    std::thread tWrite(Write, ctx, std::move(device));
     std::thread tRead(Read, ctx, std::move(files));
 
     tRead.join();
