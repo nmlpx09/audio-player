@@ -38,7 +38,7 @@ public:
     TWav& operator=(const TWav&) = delete;
     TWav& operator=(TWav&&) = delete;
 
-    std::expected<TSampleFormat, std::error_code> Init(std::string fileName, std::size_t delay) noexcept override;
+    std::expected<TFormat, std::error_code> Init(std::string fileName, std::size_t delay) noexcept override;
     std::error_code Read(const TCallback&) noexcept override;
 
 private:

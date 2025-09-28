@@ -23,7 +23,7 @@ public:
     std::error_code Write(const TCallback& callback) noexcept override;
 
 private:
-    std::error_code Init(TSampleFormat sampleFormat) noexcept override;
+    std::error_code Init(TFormat sampleFormat) noexcept override;
 
 private:
     pa_simple* Simple = nullptr;

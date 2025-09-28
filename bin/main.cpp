@@ -19,8 +19,11 @@
 #include <thread>
 #include <vector>
 
+static const std::size_t DELAY_MS = 10;
+static const std::size_t MAX_SIZE_QUEUE = 100;
+
 struct TContext {
-    std::list<std::tuple<std::chrono::time_point<std::chrono::steady_clock>, TSampleFormat, std::vector<std::uint8_t>>> queue;
+    std::list<std::tuple<std::chrono::time_point<std::chrono::steady_clock>, TFormat, std::vector<std::uint8_t>>> queue;
     std::mutex mutex;
     std::condition_variable writeCv;
     std::condition_variable readCv;
@@ -28,15 +31,12 @@ struct TContext {
     bool end = false;
 };
 
-static const std::size_t DELAY_MS = 10;
-static const std::size_t MAX_SIZE_QUEUE = 100;
-
 using TContextPtr = std::shared_ptr<TContext>;
 
 void Write(TContextPtr ctx, std::string device) noexcept {
     NWrite::TWritePtr write = std::make_unique<NWrite::TWrite>(device);
 
-    auto popQueue = [ctx]() -> std::optional<std::pair<TSampleFormat, TData>> {
+    auto popQueue = [ctx]() -> std::optional<std::pair<TFormat, TData>> {
         std::unique_lock<std::mutex> ulock{ctx->mutex};
         ctx->writeCv.wait(ulock, [ctx] { return !ctx->queue.empty() || ctx->end; });
 
@@ -80,7 +80,7 @@ void Read(TContextPtr ctx, std::vector<std::filesystem::path> files) noexcept {
             read = std::make_unique<NRead::TWav>();
         }
 
-        TSampleFormat format;
+        TFormat format;
         if (auto result = read->Init(file.string(), DELAY_MS); !result) {
             std::cerr << "read init error: " << result.error().message() << std::endl;
             return; 
@@ -119,12 +119,12 @@ int main(int argc, char *argv[]) {
 
     if (std::filesystem::is_directory(path)) {
         for (const auto& entry : std::filesystem::directory_iterator(path)) {
-            if (entry.path().extension() == ".wav" || entry.path().extension() == ".flac") {
+            if (TFormat::FormatPermited.contains(entry.path().extension())) {
                 files.push_back(entry.path());
             }
         }
     } else {
-        if (path.extension() == ".wav" || path.extension() == ".flac") {
+        if (TFormat::FormatPermited.contains(path.extension())) {
             files.push_back(path);
         }
     }

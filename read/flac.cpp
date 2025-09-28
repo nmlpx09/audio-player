@@ -48,7 +48,7 @@ TFlac::TFlac() {}
 
 TFlac::~TFlac() {}
 
-std::expected<TSampleFormat, std::error_code> TFlac::Init(std::string fileName, std::size_t delay) noexcept {
+std::expected<TFormat, std::error_code> TFlac::Init(std::string fileName, std::size_t delay) noexcept {
     auto status = Decoder.init(fileName);
 
     if(status != FLAC__STREAM_DECODER_INIT_STATUS_OK) {
@@ -57,21 +57,21 @@ std::expected<TSampleFormat, std::error_code> TFlac::Init(std::string fileName, 
 
     Decoder.process_until_end_of_metadata();
 
-    if (!TSampleFormat::NumChannelsPermited.contains(Decoder.NumChannels)) {
+    if (!TFormat::NumChannelsPermited.contains(Decoder.NumChannels)) {
         return std::unexpected(EErrorCode::FileFormat);
     }
 
-    if (!TSampleFormat::SampleRatePermited.contains(Decoder.SampleRate)) {
+    if (!TFormat::SampleRatePermited.contains(Decoder.SampleRate)) {
         return std::unexpected(EErrorCode::FileFormat);
     }
 
-    if (!TSampleFormat::BitsPerSamplePermited.contains(Decoder.BitsPerSample)) {
+    if (!TFormat::BitsPerSamplePermited.contains(Decoder.BitsPerSample)) {
         return std::unexpected(EErrorCode::FileFormat);
     }
 
     Decoder.DataSize =  Decoder.NumChannels * Decoder.SampleRate * (Decoder.BitsPerSample / 8) * delay / 1000;
 
-    return TSampleFormat {
+    return TFormat {
         .BitsPerSample = Decoder.BitsPerSample,
         .NumChannels = Decoder.NumChannels,
         .SampleRate =  Decoder.SampleRate

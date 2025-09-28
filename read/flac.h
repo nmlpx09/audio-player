@@ -40,7 +40,7 @@ public:
     TFlac& operator=(const TFlac&) = delete;
     TFlac& operator=(TFlac&&) = delete;
 
-    std::expected<TSampleFormat, std::error_code> Init(std::string fileName, std::size_t delay) noexcept override;
+    std::expected<TFormat, std::error_code> Init(std::string fileName, std::size_t delay) noexcept override;
     std::error_code Read(const TCallback&) noexcept override;
 
 private:

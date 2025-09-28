@@ -20,7 +20,7 @@ TWrite::~TWrite() {
     }
 }
 
-std::error_code TWrite::Init(TSampleFormat sampleFormat) noexcept {
+std::error_code TWrite::Init(TFormat sampleFormat) noexcept {
     if (auto err = snd_pcm_open(&SoundDevice, Device.c_str(), SND_PCM_STREAM_PLAYBACK, 0); err < 0) {
         return make_error_code(EErrorCode::DeviceInit);
     }
@@ -39,7 +39,7 @@ std::error_code TWrite::Init(TSampleFormat sampleFormat) noexcept {
         return make_error_code(EErrorCode::DeviceInit);
     }
 
-    if (!TSampleFormat::NumChannelsPermited.contains(sampleFormat.NumChannels)) {
+    if (!TFormat::NumChannelsPermited.contains(sampleFormat.NumChannels)) {
         return EErrorCode::DeviceInit;
     }
 
@@ -47,7 +47,7 @@ std::error_code TWrite::Init(TSampleFormat sampleFormat) noexcept {
         return make_error_code(EErrorCode::DeviceInit);
     }
 
-    if (!TSampleFormat::BitsPerSamplePermited.contains(sampleFormat.BitsPerSample)) {
+    if (!TFormat::BitsPerSamplePermited.contains(sampleFormat.BitsPerSample)) {
         return EErrorCode::DeviceInit;
     }
 
@@ -69,7 +69,7 @@ std::error_code TWrite::Init(TSampleFormat sampleFormat) noexcept {
         return make_error_code(EErrorCode::DeviceInit);
     }
 
-    if (!TSampleFormat::SampleRatePermited.contains(sampleFormat.SampleRate)) {
+    if (!TFormat::SampleRatePermited.contains(sampleFormat.SampleRate)) {
         return EErrorCode::DeviceInit;
     }
 
@@ -94,7 +94,7 @@ std::error_code TWrite::Init(TSampleFormat sampleFormat) noexcept {
 }
 
 std::error_code TWrite::Write(const TCallback& callback) noexcept {
-    TSampleFormat currentFormat;
+    TFormat currentFormat;
 
     while (true) {
         if (auto data = callback(); !data) {

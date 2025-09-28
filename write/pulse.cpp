@@ -18,14 +18,14 @@ TWrite::~TWrite() {
     }
 }
 
-std::error_code TWrite::Init(TSampleFormat sampleFormat) noexcept {
+std::error_code TWrite::Init(TFormat sampleFormat) noexcept {
     pa_sample_format_t format;
 
-    if (!TSampleFormat::NumChannelsPermited.contains(sampleFormat.NumChannels)) {
+    if (!TFormat::NumChannelsPermited.contains(sampleFormat.NumChannels)) {
         return EErrorCode::DeviceInit;
     }
 
-    if (!TSampleFormat::BitsPerSamplePermited.contains(sampleFormat.BitsPerSample)) {
+    if (!TFormat::BitsPerSamplePermited.contains(sampleFormat.BitsPerSample)) {
         return EErrorCode::DeviceInit;
     }
 
@@ -39,7 +39,7 @@ std::error_code TWrite::Init(TSampleFormat sampleFormat) noexcept {
         return EErrorCode::DeviceInit;
     }
 
-    if (!TSampleFormat::SampleRatePermited.contains(sampleFormat.SampleRate)) {
+    if (!TFormat::SampleRatePermited.contains(sampleFormat.SampleRate)) {
         return EErrorCode::DeviceInit;
     }
 
@@ -65,7 +65,7 @@ std::error_code TWrite::Init(TSampleFormat sampleFormat) noexcept {
 }
 
 std::error_code TWrite::Write(const TCallback& callback) noexcept {
-    TSampleFormat currentFormat;
+    TFormat currentFormat;
 
     while (true) {
         if (auto data = callback(); !data) {

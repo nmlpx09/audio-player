@@ -10,7 +10,7 @@ TWav::~TWav() {
     close(Fd);
 }
 
-std::expected<TSampleFormat, std::error_code> TWav::Init(std::string fileName, std::size_t delay) noexcept {
+std::expected<TFormat, std::error_code> TWav::Init(std::string fileName, std::size_t delay) noexcept {
     Fd = open(fileName.c_str(), O_RDONLY);
 
     if (Fd < 0) {
@@ -25,21 +25,21 @@ std::expected<TSampleFormat, std::error_code> TWav::Init(std::string fileName, s
         return std::unexpected(EErrorCode::FileFormat);
     }
 
-    if (!TSampleFormat::NumChannelsPermited.contains(wavHeader.NumChannels)) {
+    if (!TFormat::NumChannelsPermited.contains(wavHeader.NumChannels)) {
         return std::unexpected(EErrorCode::FileFormat);
     }
 
-    if (!TSampleFormat::SampleRatePermited.contains(wavHeader.SampleRate)) {
+    if (!TFormat::SampleRatePermited.contains(wavHeader.SampleRate)) {
         return std::unexpected(EErrorCode::FileFormat);
     }
 
-    if (!TSampleFormat::BitsPerSamplePermited.contains(wavHeader.BitsPerSample)) {
+    if (!TFormat::BitsPerSamplePermited.contains(wavHeader.BitsPerSample)) {
         return std::unexpected(EErrorCode::FileFormat);
     }
 
     DataSize = wavHeader.NumChannels * wavHeader.SampleRate * (wavHeader.BitsPerSample / 8) * delay / 1000;
 
-    return TSampleFormat {
+    return TFormat {
         .BitsPerSample = wavHeader.BitsPerSample,
         .NumChannels = wavHeader.NumChannels,
         .SampleRate = wavHeader.SampleRate
