@@ -2,10 +2,12 @@ CC = clang++-20
 CCFLAGS = -O3 -ffast-math -std=c++23 -pedantic -Wall -W -Werror -Wextra -c -I.
 DEFINES =
 
-OBJ_ALSA = bin/main.o write/alsa.o read/wav.o read/flac.o
+OBJ = bin/main.o read/wav.o read/flac.o
+
+OBJ_ALSA = $(OBJ) write/alsa.o
 LDFLAGS_ALSA = -lasound -lFLAC++
 
-OBJ_PULSE = bin/main.o write/pulse.o read/wav.o read/flac.o
+OBJ_PULSE =  $(OBJ) write/pulse.o
 LDFLAGS_PULSE = -lpulse-simple -lpulse -lFLAC++
 
 RUN = bin/play

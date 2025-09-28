@@ -51,7 +51,7 @@ std::error_code TWav::Read(const TCallback& callback) noexcept {
         TData buffer(DataSize, 0);
 
         auto size = read(Fd, buffer.data(), DataSize);
-    
+
         if (size >= 0 && size < DataSize) {
             return {};
         } else if (size < 0) {
