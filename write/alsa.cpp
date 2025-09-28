@@ -3,22 +3,10 @@
 
 namespace NWrite {
 
-TWrite::TWrite(
-    std::uint16_t bitsPerSample,
-    std::uint8_t channels,
-    std::uint32_t rate,
-    std::string device
-)
-: BitsPerSample(std::move(bitsPerSample))
-, Channels(channels)
-, Rate(rate) 
-, Device(std::move(device)){
+TWrite::TWrite(std::string device) : Device(std::move(device)) {
 }
 
 TWrite::TWrite(TWrite&& alsa) noexcept {
-    std::swap(BitsPerSample, alsa.BitsPerSample);
-    std::swap(Channels, alsa.Channels);
-    std::swap(Rate, alsa.Rate);
     std::swap(Device, alsa.Device);
     std::swap(SoundDevice, alsa.SoundDevice);
     std::swap(HwParams, alsa.HwParams);
@@ -32,7 +20,7 @@ TWrite::~TWrite() {
     }
 }
 
-std::error_code TWrite::Init() noexcept {
+std::error_code TWrite::Init(TSampleFormat sampleFormat) noexcept {
     if (auto err = snd_pcm_open(&SoundDevice, Device.c_str(), SND_PCM_STREAM_PLAYBACK, 0); err < 0) {
         return make_error_code(EErrorCode::DeviceInit);
     }
@@ -51,18 +39,21 @@ std::error_code TWrite::Init() noexcept {
         return make_error_code(EErrorCode::DeviceInit);
     }
 
-    if (Channels > 2) {
+    if (sampleFormat.NumChannels != 2) {
         return make_error_code(EErrorCode::DeviceInit);
     }
 
-    if (auto err = snd_pcm_hw_params_set_channels(SoundDevice, HwParams, Channels); err < 0) {
+    if (auto err = snd_pcm_hw_params_set_channels(SoundDevice, HwParams, sampleFormat.NumChannels); err < 0) {
         return make_error_code(EErrorCode::DeviceInit);
     }
 
     snd_pcm_format_t format;
-    if (BitsPerSample == 24) {
+    if (sampleFormat.BytesPerSample == 3) {
         format = SND_PCM_FORMAT_S24_3LE;
-        FrameSize = 3 * Channels;
+        FrameSize = sampleFormat.BytesPerSample * sampleFormat.NumChannels;
+    } else if (sampleFormat.BytesPerSample == 2) {
+        format = SND_PCM_FORMAT_S16_LE;
+        FrameSize = sampleFormat.BytesPerSample * sampleFormat.NumChannels;
     } else {
         return make_error_code(EErrorCode::DeviceInit);
     }
@@ -71,15 +62,15 @@ std::error_code TWrite::Init() noexcept {
         return make_error_code(EErrorCode::DeviceInit);
     }
 
-    if (Rate != 48000) {
+    if (sampleFormat.SampleRate != 48000 && sampleFormat.SampleRate != 44100) {
         return make_error_code(EErrorCode::DeviceInit);
     }
 
-    if (auto err = snd_pcm_hw_params_set_rate_near(SoundDevice, HwParams, &Rate, 0); err < 0) {
+    if (auto err = snd_pcm_hw_params_set_rate_near(SoundDevice, HwParams, &sampleFormat.SampleRate, 0); err < 0) {
         return make_error_code(EErrorCode::DeviceInit);
     }
 
-    snd_pcm_uframes_t bufferSize = Rate * FrameSize;
+    snd_pcm_uframes_t bufferSize = sampleFormat.SampleRate * FrameSize;
     if (auto err = snd_pcm_hw_params_set_buffer_size_near(SoundDevice, HwParams, &bufferSize); err < 0) {
         return make_error_code(EErrorCode::DeviceInit);
     }
@@ -95,19 +86,36 @@ std::error_code TWrite::Init() noexcept {
     return {};
 }
 
-std::error_code TWrite::Write(TData&& data) noexcept {
-    if (SoundDevice == nullptr) {
-        return make_error_code(EErrorCode::DeviceInit);
-    }
-    auto frames = data.size() / FrameSize;
+std::error_code TWrite::Write(const TCallback& callback) noexcept {
+    TSampleFormat currentFormat;
 
-    auto err = snd_pcm_writei(SoundDevice, data.data(), frames);
+    while (true) {
+        if (auto data = callback(); !data) {
+            break;
+        } else {
+            auto&& [format, buffer] = data.value();
 
-    if (err == -ENODEV) {
-        return Init();
-    } else if (err == -EPIPE) {
-        snd_pcm_prepare(SoundDevice);
-        snd_pcm_writei(SoundDevice, data.data(), frames);
+            if (currentFormat != format) {
+                if(auto ec = Init(format); ec) {
+                    return ec;
+                } else {
+                    currentFormat = format;
+                }
+            }
+
+            auto frames = buffer.size() / FrameSize;
+
+            auto err = snd_pcm_writei(SoundDevice, buffer.data(), frames);
+
+            if (err == -ENODEV) {
+                if (auto ec = Init(format); ec) {
+                    return ec;
+                }
+            } else if (err == -EPIPE) {
+                snd_pcm_prepare(SoundDevice);
+                snd_pcm_writei(SoundDevice, buffer.data(), frames);
+            }
+        }
     }
 
     return {};

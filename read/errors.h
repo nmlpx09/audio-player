@@ -7,7 +7,6 @@ namespace NRead {
 enum EErrorCode {
     Ok,
     FileOpen,
-    FileEnd,
     FileFormat
 };
 
@@ -33,8 +32,6 @@ public:
                 return "ok";
             case FileOpen:
                 return "file open error";
-            case FileEnd:
-                return "file end";
             case FileFormat:
                 return "file format error";
         }

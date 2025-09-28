@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <read/flac.h>
 #include <read/wav.h>
 
 #ifdef ALSA
@@ -11,16 +12,17 @@
 #include <algorithm>
 #include <chrono>
 #include <condition_variable>
-#include <deque>
 #include <filesystem>
 #include <iostream>
+#include <optional>
 #include <memory>
 #include <mutex>
+#include <list>
 #include <thread>
 #include <vector>
 
 struct TContext {
-    std::deque<std::pair<std::chrono::time_point<std::chrono::steady_clock>, std::vector<std::uint8_t>>> queue;
+    std::list<std::tuple<std::chrono::time_point<std::chrono::steady_clock>, TSampleFormat, std::vector<std::uint8_t>>> queue;
     std::mutex mutex;
     std::condition_variable writeCv;
     std::condition_variable readCv;
@@ -31,22 +33,17 @@ struct TContext {
 using TContextPtr = std::shared_ptr<TContext>;
 
 void Write(TContextPtr ctx) noexcept {
-    NWrite::TWritePtr write = std::make_unique<NWrite::TWrite>(BITS_PER_SAMPLE, CHANNELS, RATE, DEVICE);
+    NWrite::TWritePtr write = std::make_unique<NWrite::TWrite>(DEVICE);
 
-    if (auto ec = write->Init(); ec) {
-        std::cerr << "write init error: " << ec.message() << std::endl;
-        return;
-    }
-
-    while (true) {
+    auto popQueue = [ctx]() -> std::optional<std::pair<TSampleFormat, TData>> {
         std::unique_lock<std::mutex> ulock{ctx->mutex};
         ctx->writeCv.wait(ulock, [ctx] { return !ctx->queue.empty() || ctx->end; });
 
         if (ctx->end) {
-            return;
+            return std::nullopt;
         }
 
-        auto data = std::move(ctx->queue.front());
+        auto [date, format, buffer] = std::move(ctx->queue).front();
         ctx->queue.pop_front();
 
         ulock.unlock();
@@ -55,13 +52,17 @@ void Write(TContextPtr ctx) noexcept {
         auto delta = std::chrono::microseconds(100);
         auto now = std::chrono::steady_clock::now();
 
-        if (now - data.first > delta) {
-            continue;
-        } else if (data.first - now > delta) {
-            std::this_thread::sleep_until(data.first);
+        if (now - date > delta) {
+            return  std::make_optional(std::make_pair(std::move(format), TData{}));
+        } else if (date - now > delta) {
+            std::this_thread::sleep_until(date);
         }
 
-        write->Write(std::move(data.second));
+        return std::make_optional(std::make_pair(std::move(format), std::move(buffer)));
+    };
+
+    if (auto ec = write->Write(popQueue); ec) {
+        std::cerr << "write error: " << ec.message() << std::endl;
     }
 }
 
@@ -71,27 +72,34 @@ void Read(TContextPtr ctx, std::vector<std::filesystem::path> files) noexcept {
 
         auto time = std::chrono::steady_clock::now() + std::chrono::milliseconds(DELAY_MS * MAX_SIZE_QUEUE);
 
-        NRead::TReadPtr read = std::make_unique<NRead::TWav>(
-            file.string(), BITS_PER_SAMPLE, CHANNELS, RATE, DATA_SIZE);
-
-        if (auto ec = read->Init(); ec) {
-            std::cerr << "read init error: " << ec.message() << std::endl;
-            return; 
+        NRead::TReadPtr read;
+        if (file.extension() == ".flac") {
+            read = std::make_unique<NRead::TFlac>();
+        } else {
+            read = std::make_unique<NRead::TWav>();
         }
 
-        while (true) {
+        TSampleFormat format;
+        if (auto result = read->Init(file.string(), DELAY_MS); !result) {
+            std::cerr << "read init error: " << result.error().message() << std::endl;
+            return; 
+        } else {
+            format = result.value();
+        }
+
+        auto pushQueue = [ctx, format, &time](TData data) {
             std::unique_lock<std::mutex> ulock{ctx->mutex};
             ctx->readCv.wait(ulock, [ctx] { return ctx->queue.size() < MAX_SIZE_QUEUE; });
 
-            if (auto result = read->Rcv(); result) {
-                ctx->queue.emplace_back(std::make_pair(time, std::move(result).value()));
-                time += std::chrono::milliseconds(DELAY_MS);
-            } else {
-                break;
-            }
+            ctx->queue.emplace_back(std::make_tuple(time, format, std::move(data)));
+            time += std::chrono::milliseconds(DELAY_MS);
 
             ulock.unlock();
             ctx->writeCv.notify_one();
+        };
+
+        if (auto ec = read->Read(pushQueue); ec) {
+            std::cerr << "read error: " << ec.message() << std::endl;
         }
     }
 
@@ -110,12 +118,12 @@ int main(int argc, char *argv[]) {
 
     if (std::filesystem::is_directory(path)) {
         for (const auto& entry : std::filesystem::directory_iterator(path)) {
-            if (entry.path().extension() ==  ".wav") {
+            if (entry.path().extension() == ".wav" || entry.path().extension() == ".flac") {
                 files.push_back(entry.path());
             }
         }
     } else {
-        if (path.extension() == ".wav") {
+        if (path.extension() == ".wav" || path.extension() == ".flac") {
             files.push_back(path);
         }
     }

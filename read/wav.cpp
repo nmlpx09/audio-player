@@ -6,29 +6,15 @@
 
 namespace NRead {
 
-TWav::TWav(
-    std::string fileName,
-    std::uint16_t bitsPerSample,
-    std::uint8_t cannels,
-    std::uint32_t rate,
-    std::int32_t dataSize
-)
-: FileName(std::move(fileName))
-, BitsPerSample(std::move(bitsPerSample))
-, Cannels(cannels)
-, Rate(rate)
-, DataSize(dataSize) {
-}
-
 TWav::~TWav() {
     close(Fd);
 }
 
-std::error_code TWav::Init() noexcept {
-    Fd = open(FileName.c_str(), O_RDONLY);
+std::expected<TSampleFormat, std::error_code> TWav::Init(std::string fileName, std::size_t delay) noexcept {
+    Fd = open(fileName.c_str(), O_RDONLY);
 
     if (Fd < 0) {
-        return EErrorCode::FileOpen;
+        return std::unexpected(EErrorCode::FileOpen);
     }
 
     TWavHeader wavHeader;
@@ -36,35 +22,53 @@ std::error_code TWav::Init() noexcept {
     read(Fd, reinterpret_cast<std::uint8_t*>(&wavHeader), sizeof(TWavHeader));
 
     if (std::string{wavHeader.Format, 4} != "WAVE") {
-        return EErrorCode::FileFormat;
+        return std::unexpected(EErrorCode::FileFormat);
     }
 
-    if (wavHeader.NumChannels != Cannels) {
-        return EErrorCode::FileFormat;
+    if (wavHeader.NumChannels != 2) {
+        return std::unexpected(EErrorCode::FileFormat);
     }
 
-    if (wavHeader.SampleRate != Rate) {
-        return EErrorCode::FileFormat;
+    if (wavHeader.SampleRate != 48000 && wavHeader.SampleRate != 44100) {
+        return std::unexpected(EErrorCode::FileFormat);
     }
 
-    if (wavHeader.BitsPerSample != BitsPerSample) {
-        return EErrorCode::FileFormat;
+    if (wavHeader.BitsPerSample != 24 && wavHeader.BitsPerSample != 16) {
+        return std::unexpected(EErrorCode::FileFormat);
+    }
+
+    std::uint16_t bytesPerSample = 0;
+    if (wavHeader.BitsPerSample == 24) {
+        bytesPerSample = 3;
+    } else if (wavHeader.BitsPerSample == 16) {
+        bytesPerSample = 2;
+    }
+
+    DataSize = wavHeader.NumChannels * wavHeader.SampleRate * bytesPerSample * delay / 1000;
+
+    return TSampleFormat {
+        .BytesPerSample = bytesPerSample,
+        .NumChannels = wavHeader.NumChannels,
+        .SampleRate = wavHeader.SampleRate
+    };
+}
+
+std::error_code TWav::Read(const TCallback& callback) noexcept {
+    while (true) {
+        TData buffer(DataSize, 0);
+
+        auto size = read(Fd, buffer.data(), DataSize);
+    
+        if (size >= 0 && size < DataSize) {
+            return {};
+        } else if (size < 0) {
+            return EErrorCode::FileOpen;
+        }
+
+        callback(std::move(buffer));
     }
 
     return {};
-}
-
-std::expected<TData, std::error_code> TWav::Rcv() const noexcept {
-    TData buffer(DataSize, 0);
-    
-    auto size = read(Fd, buffer.data(), DataSize);
-    
-    if (size >= 0 && size < DataSize) {
-        return std::unexpected(EErrorCode::FileEnd);
-    } else if (size < 0) {
-        return std::unexpected(EErrorCode::FileOpen);
-    }
-    return buffer;
 }
 
 }

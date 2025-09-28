@@ -9,6 +9,8 @@
 
 namespace NRead {
 
+namespace {
+
 struct TWavHeader {
     char ChunkId[4];
     std::uint32_t ChunkSize;
@@ -25,29 +27,21 @@ struct TWavHeader {
     std::uint32_t SubChunk2Size;
 };
 
+}
+
 struct TWav: TInterface {
 public:
-    TWav(
-        std::string fileName,
-        std::uint16_t bitsPerSample,
-        std::uint8_t cannels,
-        std::uint32_t rate,
-        std::int32_t dataSize
-    );
+    TWav() = default;
     TWav(const TWav&) = delete;
     TWav(TWav&&) noexcept = default;
     ~TWav();
     TWav& operator=(const TWav&) = delete;
     TWav& operator=(TWav&&) = delete;
 
-    std::error_code Init() noexcept;
-    std::expected<TData, std::error_code> Rcv() const noexcept;
+    std::expected<TSampleFormat, std::error_code> Init(std::string fileName, std::size_t delay) noexcept override;
+    std::error_code Read(const TCallback&) noexcept override;
 
 private:
-    std::string FileName;
-    std::uint16_t BitsPerSample;
-    std::uint8_t Cannels = 0;
-    std::uint32_t Rate = 0;
     std::int32_t DataSize = 0;
     std::int32_t Fd = -1;
 };

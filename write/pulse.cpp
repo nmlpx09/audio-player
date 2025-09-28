@@ -1,23 +1,13 @@
 #include "pulse.h"
 #include "errors.h"
 
+#include <iostream>
+
 namespace NWrite {
 
-TWrite::TWrite(
-    std::uint16_t bitsPerSample,
-    std::uint8_t channels,
-    std::uint32_t rate,
-    std::string
-)
-: BitsPerSample(std::move(bitsPerSample))
-, Channels(channels)
-, Rate(rate) {
-}
+TWrite::TWrite(std::string) { }
 
 TWrite::TWrite(TWrite&& pulse) noexcept {
-    std::swap(BitsPerSample, pulse.BitsPerSample);
-    std::swap(Channels, pulse.Channels);
-    std::swap(Rate, pulse.Rate);
     std::swap(Simple, pulse.Simple);
     std::swap(Spec, pulse.Spec);
     std::swap(BufferAttr, pulse.BufferAttr);
@@ -30,26 +20,28 @@ TWrite::~TWrite() {
     }
 }
 
-std::error_code TWrite::Init() noexcept {
+std::error_code TWrite::Init(TSampleFormat sampleFormat) noexcept {
     pa_sample_format_t format;
-    if (BitsPerSample == 24) {
+    if (sampleFormat.BytesPerSample == 3) {
         format = PA_SAMPLE_S24LE;
+    } else if (sampleFormat.BytesPerSample == 2) {
+        format = PA_SAMPLE_S16LE;
     } else {
         return EErrorCode::DeviceInit;
     }
 
-    if (Rate != 48000) {
+    if (sampleFormat.SampleRate != 48000 && sampleFormat.SampleRate != 44100) {
         return EErrorCode::DeviceInit;
     }
 
-    if (Channels != 2) {
+    if (sampleFormat.NumChannels != 2) {
         return EErrorCode::DeviceInit;
     }
 
     Spec = {
         .format = format,
-        .rate = Rate,
-        .channels = Channels
+        .rate = sampleFormat.SampleRate,
+        .channels = static_cast<std::uint8_t>(sampleFormat.NumChannels)
     };
 
     BufferAttr = {
@@ -67,13 +59,26 @@ std::error_code TWrite::Init() noexcept {
     return {};
 }
 
-std::error_code TWrite::Write(TData&& data) noexcept {
-    if (Simple == nullptr) {
-        return make_error_code(EErrorCode::DeviceInit);
+std::error_code TWrite::Write(const TCallback& callback) noexcept {
+    TSampleFormat currentFormat;
+
+    while (true) {
+        if (auto data = callback(); !data) {
+            break;
+        } else {
+            auto&& [format, buffer] = data.value();
+
+            if (currentFormat != format) {
+                if (auto ec = Init(format); ec) {
+                    return ec;
+                } else {
+                    currentFormat = format;
+                }
+            }
+
+            pa_simple_write(Simple, buffer.data(), buffer.size(), nullptr);
+        }
     }
-
-    pa_simple_write(Simple, data.data(), data.size(), nullptr);
-
     return {};
 }
 

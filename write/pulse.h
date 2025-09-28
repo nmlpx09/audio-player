@@ -13,26 +13,19 @@ namespace NWrite {
 
 struct TWrite: TInterface {
 public:
-    TWrite(
-        std::uint16_t bitsPerSample,
-        std::uint8_t channels,
-        std::uint32_t rate,
-        std::string device
-    );
+    TWrite(std::string device);
     TWrite(const TWrite&) = delete;
     TWrite(TWrite&&) noexcept;
     ~TWrite();
     TWrite& operator=(const TWrite&) = delete;
     TWrite& operator=(TWrite&&) = delete;
 
-    std::error_code Init() noexcept override;
-    std::error_code Write(TData&& data) noexcept override;
+    std::error_code Write(const TCallback& callback) noexcept override;
 
 private:
-    std::uint16_t BitsPerSample = 0;
-    std::uint8_t Channels = 0;
-    std::uint32_t Rate = 0;
-    
+    std::error_code Init(TSampleFormat sampleFormat) noexcept override;
+
+private:
     pa_simple* Simple = nullptr;
     pa_sample_spec Spec;
     pa_buffer_attr BufferAttr;
