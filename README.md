@@ -1,6 +1,6 @@
 # about
 
-simple wav player for 48000 Hz 24 bit stereo LPCM format
+simple wav and flack player for 48000 or 44100 Hz  24 or 16 bit stereo format
 
 # requirement
 
@@ -8,6 +8,7 @@ simple wav player for 48000 Hz 24 bit stereo LPCM format
 2. make
 3. pulseaudio
 4. alsa
+5. flac
 
 # build
 
