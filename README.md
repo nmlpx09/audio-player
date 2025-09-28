@@ -1,6 +1,6 @@
 # about
 
-simple wav and flack player for 48000 or 44100 Hz  24 or 16 bit stereo format
+simple wav and flac player for 48000 or 44100 Hz 24 or 16 bit stereo format
 
 # requirement
 

@@ -1,8 +1,6 @@
 #include "pulse.h"
 #include "errors.h"
 
-#include <iostream>
-
 namespace NWrite {
 
 TWrite::TWrite(std::string) { }
