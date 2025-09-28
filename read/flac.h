@@ -22,8 +22,8 @@ public:
 
     TCallback Callback;
     std::size_t DataSize = 0;
-    std::uint8_t NumChannels = 0;
-    std::uint16_t BytesPerSample = 0;
+    std::uint32_t NumChannels = 0;
+    std::uint32_t BitsPerSample = 0;
     std::uint32_t SampleRate = 0;
 
     std::list<TData::value_type> Buffer;

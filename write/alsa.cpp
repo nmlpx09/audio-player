@@ -39,21 +39,28 @@ std::error_code TWrite::Init(TSampleFormat sampleFormat) noexcept {
         return make_error_code(EErrorCode::DeviceInit);
     }
 
-    if (sampleFormat.NumChannels != 2) {
-        return make_error_code(EErrorCode::DeviceInit);
+    if (!TSampleFormat::NumChannelsPermited.contains(sampleFormat.NumChannels)) {
+        return EErrorCode::DeviceInit;
     }
 
     if (auto err = snd_pcm_hw_params_set_channels(SoundDevice, HwParams, sampleFormat.NumChannels); err < 0) {
         return make_error_code(EErrorCode::DeviceInit);
     }
 
+    if (!TSampleFormat::BitsPerSamplePermited.contains(sampleFormat.BitsPerSample)) {
+        return EErrorCode::DeviceInit;
+    }
+
     snd_pcm_format_t format;
-    if (sampleFormat.BytesPerSample == 3) {
+    if (sampleFormat.BitsPerSample == 24) {
         format = SND_PCM_FORMAT_S24_3LE;
-        FrameSize = sampleFormat.BytesPerSample * sampleFormat.NumChannels;
-    } else if (sampleFormat.BytesPerSample == 2) {
+        FrameSize = 3 * sampleFormat.NumChannels;
+    } else if (sampleFormat.BitsPerSample == 16) {
         format = SND_PCM_FORMAT_S16_LE;
-        FrameSize = sampleFormat.BytesPerSample * sampleFormat.NumChannels;
+        FrameSize = 2 * sampleFormat.NumChannels;
+    } else if (sampleFormat.BitsPerSample == 32) {
+        format = SND_PCM_FORMAT_S32_LE;
+        FrameSize = 4 * sampleFormat.NumChannels;
     } else {
         return make_error_code(EErrorCode::DeviceInit);
     }
@@ -62,8 +69,8 @@ std::error_code TWrite::Init(TSampleFormat sampleFormat) noexcept {
         return make_error_code(EErrorCode::DeviceInit);
     }
 
-    if (sampleFormat.SampleRate != 48000 && sampleFormat.SampleRate != 44100) {
-        return make_error_code(EErrorCode::DeviceInit);
+    if (!TSampleFormat::SampleRatePermited.contains(sampleFormat.SampleRate)) {
+        return EErrorCode::DeviceInit;
     }
 
     if (auto err = snd_pcm_hw_params_set_rate_near(SoundDevice, HwParams, &sampleFormat.SampleRate, 0); err < 0) {
@@ -94,7 +101,6 @@ std::error_code TWrite::Write(const TCallback& callback) noexcept {
             break;
         } else {
             auto&& [format, buffer] = data.value();
-
             if (currentFormat != format) {
                 if(auto ec = Init(format); ec) {
                     return ec;

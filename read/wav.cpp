@@ -25,29 +25,22 @@ std::expected<TSampleFormat, std::error_code> TWav::Init(std::string fileName, s
         return std::unexpected(EErrorCode::FileFormat);
     }
 
-    if (wavHeader.NumChannels != 2) {
+    if (!TSampleFormat::NumChannelsPermited.contains(wavHeader.NumChannels)) {
         return std::unexpected(EErrorCode::FileFormat);
     }
 
-    if (wavHeader.SampleRate != 48000 && wavHeader.SampleRate != 44100) {
+    if (!TSampleFormat::SampleRatePermited.contains(wavHeader.SampleRate)) {
         return std::unexpected(EErrorCode::FileFormat);
     }
 
-    if (wavHeader.BitsPerSample != 24 && wavHeader.BitsPerSample != 16) {
+    if (!TSampleFormat::BitsPerSamplePermited.contains(wavHeader.BitsPerSample)) {
         return std::unexpected(EErrorCode::FileFormat);
     }
 
-    std::uint16_t bytesPerSample = 0;
-    if (wavHeader.BitsPerSample == 24) {
-        bytesPerSample = 3;
-    } else if (wavHeader.BitsPerSample == 16) {
-        bytesPerSample = 2;
-    }
-
-    DataSize = wavHeader.NumChannels * wavHeader.SampleRate * bytesPerSample * delay / 1000;
+    DataSize = wavHeader.NumChannels * wavHeader.SampleRate * (wavHeader.BitsPerSample / 8) * delay / 1000;
 
     return TSampleFormat {
-        .BytesPerSample = bytesPerSample,
+        .BitsPerSample = wavHeader.BitsPerSample,
         .NumChannels = wavHeader.NumChannels,
         .SampleRate = wavHeader.SampleRate
     };

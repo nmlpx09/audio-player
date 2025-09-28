@@ -7,11 +7,7 @@ void TFlacDecoder::metadata_callback(const FLAC__StreamMetadata *metadata) {
     if(metadata->type == FLAC__METADATA_TYPE_STREAMINFO) {
         SampleRate = metadata->data.stream_info.sample_rate;
         NumChannels = metadata->data.stream_info.channels;
-        if (metadata->data.stream_info.bits_per_sample == 24) {
-            BytesPerSample = 3;
-        } else if (metadata->data.stream_info.bits_per_sample == 16) {
-            BytesPerSample = 2;
-        }
+        BitsPerSample = metadata->data.stream_info.bits_per_sample;
     }
 }
 
@@ -19,14 +15,16 @@ FLAC__StreamDecoderWriteStatus TFlacDecoder::write_callback(const FLAC__Frame* f
     if (!Callback) {
         return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
     }
+
+    const auto bytesPerSample = BitsPerSample / 8;
     for (std::size_t index = 0; index < frame->header.blocksize; ++index) {
         auto* lelf = reinterpret_cast<const std::uint8_t*>(&frames[0][index]);
-        for (std::size_t byteIndex = 0; byteIndex < BytesPerSample; ++byteIndex) {
+        for (std::size_t byteIndex = 0; byteIndex < bytesPerSample; ++byteIndex) {
             Buffer.push_back(lelf[byteIndex]);
         }
 
         auto* right = reinterpret_cast<const std::uint8_t*>(&frames[1][index]);
-        for (std::size_t byteIndex = 0; byteIndex < BytesPerSample; ++byteIndex) {
+        for (std::size_t byteIndex = 0; byteIndex < bytesPerSample; ++byteIndex) {
             Buffer.push_back(right[byteIndex]);
         }
     }
@@ -59,22 +57,22 @@ std::expected<TSampleFormat, std::error_code> TFlac::Init(std::string fileName, 
 
     Decoder.process_until_end_of_metadata();
 
-    if (Decoder.NumChannels != 2) {
+    if (!TSampleFormat::NumChannelsPermited.contains(Decoder.NumChannels)) {
         return std::unexpected(EErrorCode::FileFormat);
     }
 
-    if (Decoder.SampleRate != 48000 && Decoder.SampleRate != 44100) {
+    if (!TSampleFormat::SampleRatePermited.contains(Decoder.SampleRate)) {
         return std::unexpected(EErrorCode::FileFormat);
     }
 
-    if (Decoder.BytesPerSample != 3 && Decoder.BytesPerSample != 2) {
+    if (!TSampleFormat::BitsPerSamplePermited.contains(Decoder.BitsPerSample)) {
         return std::unexpected(EErrorCode::FileFormat);
     }
 
-    Decoder.DataSize =  Decoder.NumChannels * Decoder.SampleRate * Decoder.BytesPerSample * delay / 1000;
+    Decoder.DataSize =  Decoder.NumChannels * Decoder.SampleRate * (Decoder.BitsPerSample / 8) * delay / 1000;
 
     return TSampleFormat {
-        .BytesPerSample = Decoder.BytesPerSample,
+        .BitsPerSample = Decoder.BitsPerSample,
         .NumChannels = Decoder.NumChannels,
         .SampleRate =  Decoder.SampleRate
     };

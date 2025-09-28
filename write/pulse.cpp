@@ -20,19 +20,26 @@ TWrite::~TWrite() {
 
 std::error_code TWrite::Init(TSampleFormat sampleFormat) noexcept {
     pa_sample_format_t format;
-    if (sampleFormat.BytesPerSample == 3) {
+
+    if (!TSampleFormat::NumChannelsPermited.contains(sampleFormat.NumChannels)) {
+        return EErrorCode::DeviceInit;
+    }
+
+    if (!TSampleFormat::BitsPerSamplePermited.contains(sampleFormat.BitsPerSample)) {
+        return EErrorCode::DeviceInit;
+    }
+
+    if (sampleFormat.BitsPerSample == 24) {
         format = PA_SAMPLE_S24LE;
-    } else if (sampleFormat.BytesPerSample == 2) {
+    } else if (sampleFormat.BitsPerSample == 16) {
         format = PA_SAMPLE_S16LE;
+    } else if (sampleFormat.BitsPerSample == 32) {
+        format = PA_SAMPLE_S32LE;
     } else {
         return EErrorCode::DeviceInit;
     }
 
-    if (sampleFormat.SampleRate != 48000 && sampleFormat.SampleRate != 44100) {
-        return EErrorCode::DeviceInit;
-    }
-
-    if (sampleFormat.NumChannels != 2) {
+    if (!TSampleFormat::SampleRatePermited.contains(sampleFormat.SampleRate)) {
         return EErrorCode::DeviceInit;
     }
 
